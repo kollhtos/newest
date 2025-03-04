@@ -11,6 +11,7 @@ interface RMAStats {
   active: number;
   completed: number;
   inProgress: number;
+  manuals: number; // Προσθήκη νέου πεδίου για τα manuals
 }
 
 interface RecentActivity {
@@ -36,28 +37,58 @@ export function Dashboard() {
     loadRecentActivity();
   }, []);
 
+
+  const deleteRMA = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('rmas')
+        .delete()
+        .eq('id', id);
+  
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+  
+      toast.success('RMA deleted successfully');
+      console.log('RMA deleted, refreshing data...');
+      loadRecentActivity(); // Ανανέωση της λίστας πρόσφατων δραστηριοτήτων
+      loadStats(); // Ανανέωση των στατιστικών
+    } catch (error) {
+      console.error('Error deleting RMA:', error);
+      toast.error('Failed to delete RMA');
+    }
+  };
+  
   const loadStats = async () => {
     try {
-      const { data: rmas, error } = await supabase
+      const { data: rmas, error: rmaError } = await supabase
         .from('rmas')
         .select('status');
-
-      if (error) throw error;
-
+  
+      const { data: manuals, error: manualError } = await supabase
+        .from('manuals')
+        .select('*');
+  
+      if (rmaError || manualError) throw rmaError || manualError;
+  
       const stats = rmas.reduce((acc, rma) => ({
         total: acc.total + 1,
         active: acc.active + (rma.status === 'pending' ? 1 : 0),
         completed: acc.completed + (rma.status === 'completed' ? 1 : 0),
-        inProgress: acc.inProgress + (rma.status === 'in-progress' ? 1 : 0)
-      }), { total: 0, active: 0, completed: 0, inProgress: 0 });
-
+        inProgress: acc.inProgress + (rma.status === 'in-progress' ? 1 : 0),
+        manuals: acc.manuals // Δεν αλλάζει εδώ
+      }), { total: 0, active: 0, completed: 0, inProgress: 0, manuals: manuals.length });
+  
       setStats(stats);
+      console.log('Stats loaded:', stats);
     } catch (error) {
       console.error('Error loading stats:', error);
       toast.error('Failed to load RMA statistics');
     }
   };
-
+  
+  
   const loadRecentActivity = async () => {
     try {
       const { data: rmas, error: rmaError } = await supabase
@@ -65,9 +96,9 @@ export function Dashboard() {
         .select('*')
         .order('date_created', { ascending: false })
         .limit(5);
-
+  
       if (rmaError) throw rmaError;
-
+  
       const activity = (rmas || []).map(rma => ({
         id: rma.id,
         rma_number: rma.rma_number,
@@ -76,13 +107,16 @@ export function Dashboard() {
         type: 'rma' as const,
         status: rma.status
       }));
-
+  
       setRecentActivity(activity);
+      console.log('Recent activity loaded:', activity);
     } catch (error) {
       console.error('Error loading recent activity:', error);
       toast.error('Failed to load recent activity');
     }
   };
+  
+  
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -120,46 +154,50 @@ export function Dashboard() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total RMAs</p>
-                  <p className="text-2xl font-semibold mt-1">{stats.total}</p>
-                </div>
-                <ClipboardList className="w-8 h-8 text-gray-400" />
-              </div>
-            </div>
+  <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600">Total RMAs</p>
+        <p className="text-2xl font-semibold mt-1">{stats.total}</p>
+      </div>
+      <ClipboardList className="w-8 h-8 text-gray-400" />
+    </div>
+  </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Active RMAs</p>
-                  <p className="text-2xl font-semibold mt-1">{stats.active}</p>
-                </div>
-                <Clock className="w-8 h-8 text-orange-500" />
-              </div>
-            </div>
+  <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600">In Progress</p>
+        <p className="text-2xl font-semibold mt-1">{stats.inProgress}</p>
+      </div>
+      <AlertTriangle className="w-8 h-8 text-blue-500" />
+    </div>
+  </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
-                  <p className="text-2xl font-semibold mt-1">{stats.inProgress}</p>
-                </div>
-                <AlertTriangle className="w-8 h-8 text-blue-500" />
-              </div>
-            </div>
+  <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600">Completed</p>
+        <p className="text-2xl font-semibold mt-1">{stats.completed}</p>
+      </div>
+      <CheckCircle className="w-8 h-8 text-green-500" />
+    </div>
+  </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-semibold mt-1">{stats.completed}</p>
-                </div>
-                <CheckCircle className="w-8 h-8 text-green-500" />
-              </div>
-            </div>
-          </div>
+  {/* Νέα καρτέλα για τα Manuals */}
+  <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600">Total Manuals</p>
+        <p className="text-2xl font-semibold mt-1">{stats.manuals}</p>
+      </div>
+      <FileText className="w-8 h-8 text-gray-400" />
+    </div>
+  </div>
+</div>
+
+
+
 
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h2>
@@ -175,7 +213,7 @@ export function Dashboard() {
                       <div className="ml-2">
                         {activity.type === 'rma' ? (
                           <Link
-                            to={`/rmas/${activity.id}`}
+                            to={`/rmas/${activity.id}/edit`}
                             className="text-sm font-medium text-gray-900 hover:text-blue-600 flex items-center"
                           >
                             {activity.rma_number}
@@ -193,17 +231,13 @@ export function Dashboard() {
                     {activity.type === 'rma' && (
                       <div className="flex space-x-2">
                         <Link
-                          to={`/rmas/${activity.id}`}
+                          to={`/rmas/${activity.id}/edit`}
                           className="text-sm text-blue-600 hover:text-blue-800"
                         >
                           View Details
                         </Link>
-                        <Link
-                          to={`/rmas/${activity.id}/edit`}
-                          className="text-sm text-gray-600 hover:text-gray-800"
-                        >
-                          Edit
-                        </Link>
+                        
+                        
                       </div>
                     )}
                   </div>

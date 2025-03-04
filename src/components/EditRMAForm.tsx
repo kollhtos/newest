@@ -63,7 +63,7 @@ export function EditRMAForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
+  
     try {
       const { error } = await supabase
         .from('rmas')
@@ -80,10 +80,10 @@ export function EditRMAForm() {
           status: formData.status
         })
         .eq('id', id);
-
+  
       if (error) throw error;
-
-      // Upload new files if any
+  
+      // Ανέβασε νέα αρχεία, αν υπάρχουν
       if (files.length > 0) {
         for (const file of files) {
           const fileExt = file.name.split('.').pop();
@@ -91,13 +91,13 @@ export function EditRMAForm() {
           const { error: uploadError } = await supabase.storage
             .from('rma-attachments')
             .upload(fileName, file);
-
+  
           if (uploadError) throw uploadError;
         }
       }
-
+  
       toast.success('RMA updated successfully');
-      navigate(`/rmas/${id}`);
+      navigate('/dashboard'); // Πλοήγηση πίσω στο Dashboard μετά την αποθήκευση των αλλαγών
     } catch (error) {
       console.error('Error updating RMA:', error);
       toast.error('Failed to update RMA');
@@ -105,6 +105,7 @@ export function EditRMAForm() {
       setSaving(false);
     }
   };
+  
 
   if (loading) {
     return (
@@ -127,13 +128,17 @@ export function EditRMAForm() {
       <Navigation />
       
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="flex items-center mb-6">
-            <Link to={`/rmas/${id}`} className="mr-4">
-              <ArrowLeft className="w-6 h-6 text-gray-500 hover:text-gray-700" />
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Edit RMA</h1>
-          </div>
+  <div className="px-4 py-6 sm:px-0">
+    <div className="flex items-center mb-6">
+      <button
+        onClick={() => navigate('/rmas')} // Πλοήγηση πίσω στη λίστα των RMAs
+        className="mr-4"
+      >
+        <ArrowLeft className="w-6 h-6 text-gray-500 hover:text-gray-700" />
+      </button>
+      <h1 className="text-2xl font-bold text-gray-900">Edit RMA</h1>
+    </div>
+
 
           <div className="bg-white shadow rounded-lg p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -330,12 +335,13 @@ export function EditRMAForm() {
               </div>
 
               <div className="flex justify-end space-x-4">
-                <Link
-                  to={`/rmas/${id}`}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancel
-                </Link>
+              <button
+    type="button" // Αποφυγή υποβολής φόρμας
+    onClick={() => navigate('/rmas')} // Πλοήγηση πίσω στη λίστα των RMAs
+    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+  >
+    Cancel
+  </button>
                 <button
                   type="submit"
                   disabled={saving}

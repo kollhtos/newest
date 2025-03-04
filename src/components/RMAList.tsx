@@ -25,9 +25,10 @@ export function RMAList() {
         .from('rmas')
         .select('*')
         .order('date_created', { ascending: false });
-
+  
       if (error) throw error;
       setRmas(data || []);
+      console.log('RMAs loaded:', data); // Καταγραφή των δεδομένων
     } catch (error) {
       console.error('Error loading RMAs:', error);
       toast.error('Failed to load RMAs');
@@ -35,6 +36,8 @@ export function RMAList() {
       setLoading(false);
     }
   };
+  
+  
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -68,6 +71,38 @@ export function RMAList() {
       toast.error('Failed to update RMA status');
     }
   };
+
+  const deleteRMA = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('rmas')
+        .delete()
+        .eq('id', id)
+        .select();
+  
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+  
+      if (data.length === 0) {
+        toast.success('RMA deleted successfully');
+        setRmas((prevRmas) => prevRmas.filter((rma) => rma.id !== id));
+        console.log('RMA deleted:', id); // Επιβεβαίωση της διαγραφής
+      } else {
+        toast.error('Failed to delete RMA');
+        console.error('No data returned or incorrect data:', data);
+      }
+    } catch (error) {
+      console.error('Error deleting RMA:', error);
+      toast.error('Failed to delete RMA');
+    }
+  };
+  
+  
+  
+  
+  
 
   const filteredRMAs = rmas.filter(rma => {
     const matchesSearch = 
@@ -184,7 +219,7 @@ export function RMAList() {
                         {getStatusIcon(rma.status)}
                         <div className="ml-4">
                           <Link
-                            to={`/rmas/${rma.id}`}
+                            to={`/rmas/${rma.id}/edit`}
                             className="text-lg font-medium text-gray-900 hover:text-blue-600"
                           >
                             {rma.rma_number}
@@ -204,32 +239,34 @@ export function RMAList() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rma.status)}`}>
-                          {rma.status.charAt(0).toUpperCase() + rma.status.slice(1)}
-                        </span>
-                        <div className="flex space-x-2">
-                          {rma.status !== 'completed' && (
-                            <button
-                              onClick={() => handleMarkAsComplete(rma.id)}
-                              className="text-green-600 hover:text-green-800"
-                            >
-                              <CheckCircle className="w-5 h-5" />
-                            </button>
-                          )}
-                          <Link
-                            to={`/rmas/${rma.id}`}
-                            className="text-gray-400 hover:text-gray-500"
-                          >
-                            <Download className="w-5 h-5" />
-                          </Link>
-                          <Link
-                            to={`/rmas/${rma.id}/edit`}
-                            className="text-gray-400 hover:text-gray-500"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </Link>
-                        </div>
-                      </div>
+  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rma.status)}`}>
+    {rma.status.charAt(0).toUpperCase() + rma.status.slice(1)}
+  </span>
+  <div className="flex space-x-2">
+    {rma.status !== 'completed' && (
+      <button
+        onClick={() => handleMarkAsComplete(rma.id)}
+        className="text-green-600 hover:text-green-800"
+      >
+        <CheckCircle className="w-5 h-5" />
+      </button>
+    )}
+    
+    <Link
+      to={`/rmas/${rma.id}/edit`}
+      className="text-gray-400 hover:text-gray-500"
+    >
+      <Edit className="w-5 h-5" />
+    </Link>
+    <span
+      onClick={() => deleteRMA(rma.id)} // Προσθήκη συμβάντος onClick για τη διαγραφή
+      className="text-red-600 hover:text-red-800 cursor-pointer"
+    >
+      Delete
+    </span>
+  </div>
+</div>
+
                     </div>
                   </li>
                 ))}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from './Navigation';
-import { FileText, Upload, Download, Search, Clock, FolderPlus, Folder } from 'lucide-react';
+import { FileText, Upload, Download, Search, Clock, FolderPlus, Folder, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -35,6 +35,41 @@ export function ManualsList() {
     }
   };
 
+  const deleteManual = async (manual: Manual) => {
+    try {
+      // Διαγραφή από το storage
+      const { error: storageError } = await supabase.storage
+        .from('service-manuals')
+        .remove([manual.file_path]);
+  
+      if (storageError) {
+        console.error('Error deleting from storage:', storageError);
+        throw storageError;
+      }
+  
+      // Διαγραφή από τη βάση δεδομένων
+      const { error: dbError } = await supabase
+        .from('manuals')
+        .delete()
+        .eq('id', manual.id);
+  
+      if (dbError) {
+        console.error('Error deleting from database:', dbError);
+        throw dbError;
+      }
+  
+      toast.success('Manual deleted successfully');
+      console.log('Manual deleted:', manual.id);
+      loadManuals(); // Ανανέωση της λίστας
+    } catch (error) {
+      console.error('Error deleting manual:', error);
+      toast.error('Failed to delete manual');
+    }
+  };
+  
+  
+  
+  
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !title) {
       toast.error('Please provide both a file and a title');
@@ -278,6 +313,13 @@ export function ManualsList() {
                       >
                         <Download className="w-4 h-4 mr-2" />
                         Download
+                      </button>
+                      <button
+                        onClick={() => deleteManual(manual)}
+                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
                       </button>
                     </div>
                   </div>
