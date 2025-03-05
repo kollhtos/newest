@@ -35,8 +35,11 @@ export function ManualsList() {
     }
   };
 
-  const deleteManual = async (manual: Manual) => {
+  const deleteManual = async (manual) => {
     try {
+      console.log('Attempting to delete manual:', manual.id);
+      console.log('File path:', manual.file_path);
+  
       // Διαγραφή από το storage
       const { error: storageError } = await supabase.storage
         .from('service-manuals')
@@ -66,6 +69,8 @@ export function ManualsList() {
       toast.error('Failed to delete manual');
     }
   };
+  
+  
   
   
   
