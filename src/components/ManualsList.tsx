@@ -289,47 +289,52 @@ export function ManualsList() {
 
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             <ul className="divide-y divide-gray-200">
-              {filteredManuals.map((manual) => (
-                <li key={manual.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      {manual.folder_path ? (
-                        <Folder className="w-6 h-6 text-gray-400" />
-                      ) : (
-                        <FileText className="w-6 h-6 text-gray-400" />
-                      )}
-                      <div className="ml-4">
-                        <h3 className="text-lg font-medium text-gray-900">{manual.title}</h3>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>
-                            Uploaded {format(new Date(manual.uploaded_at), 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm text-gray-500">
-                        {(manual.size / 1024 / 1024).toFixed(1)} MB
-                      </span>
-                      <button
-                        onClick={() => handleDownload(manual)}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </button>
-                      <button
-                        onClick={() => deleteManual(manual)}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
+              
+            {filteredManuals.map((manual) => (
+  <li key={manual.id} className="px-6 py-4 hover:bg-gray-50">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        {manual.folder_path ? (
+          <Folder className="w-6 h-6 text-gray-400" />
+        ) : (
+          <FileText className="w-6 h-6 text-gray-400" />
+        )}
+        <div className="ml-4">
+          <h3 className="text-lg font-medium text-gray-900">{manual.title}</h3>
+          <div className="flex items-center text-sm text-gray-500">
+            <Clock className="w-4 h-4 mr-1" />
+            <span>
+              Uploaded {format(new Date(manual.uploaded_at), 'MMM d, yyyy')}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center space-x-4">
+        {!manual.folder_path && (
+          <>
+            <span className="text-sm text-gray-500">
+              {(manual.size / 1024 / 1024).toFixed(1)} MB
+            </span>
+            <button
+              onClick={() => handleDownload(manual)}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => deleteManual(manual)}
+          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete
+        </button>
+      </div>
+    </div>
+  </li>
+))}
               {filteredManuals.length === 0 && (
                 <li className="px-6 py-4 text-center text-gray-500">
                   No manuals found
