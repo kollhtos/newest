@@ -55,40 +55,43 @@ export function Settings() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
-      const { data, error: signUpError } = await supabase.auth.admin.createUser({
+      const { user, error: signUpError } = await supabase.auth.signUp({
         email: newUserEmail,
         password: newUserPassword,
-        email_confirm: true
       });
-
+  
       if (signUpError) throw signUpError;
-
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({
-          full_name: newUserFullName,
-          role: newUserRole
-        })
-        .eq('id', data.user.id);
-
-      if (profileError) throw profileError;
-
-      toast.success('User created successfully');
-      loadUsers();
+  
+      toast.success('Confirmation email sent. Please check your inbox.');
+  
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserFullName('');
       setNewUserRole('user');
     } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error('Failed to create user');
+      console.error('Error creating user:', error.message || error); // Log the error message
+      toast.error('Failed to register. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+  
+  
+  
 
+  const handleForgotPassword = async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      toast.success('Password reset email sent. Please check your inbox.');
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      toast.error('Failed to send password reset email');
+    }
+  };
+  
   const handleUpdateUser = async (userId: string, updates: Partial<UserProfile>) => {
     try {
       const { error } = await supabase
@@ -121,7 +124,41 @@ export function Settings() {
       toast.error('Failed to delete user');
     }
   };
+  const updateUserProfile = async (userId, fullName, role) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert({ id: userId, full_name: fullName, role: role });
+  
+      if (error) throw error;
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    }
+  };
+  
 
+  const handleLogin = async (email, password) => {
+    try {
+      const { user, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+  
+      if (error) throw error;
+  
+      if (user.confirmation_sent_at && !user.confirmed_at) {
+        toast.warning('Please confirm your email before logging in.');
+      } else {
+        toast.success('Logged in successfully');
+      }
+    } catch (error) {
+      console.error('Error logging in:', error);
+      toast.error('Failed to log in');
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-gray-900">
       <Navigation />
