@@ -213,7 +213,7 @@ export function RMAList() {
 
 
   <p className="text-sm text-gray-500">
-    A/A: {rma.rma_number} {/* Εμφάνιση του aukson rma numb */}
+    A/A: {rma.rma_number} {/* Εμφάνιση του aukson rma αριθμου */}
   </p>
   
   <p className="text-sm text-gray-500">
