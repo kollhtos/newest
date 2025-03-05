@@ -14,6 +14,7 @@ export function RMAList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null); // Track deleting state
 
   useEffect(() => {
     loadRMAs();
@@ -25,10 +26,10 @@ export function RMAList() {
         .from('rmas')
         .select('*')
         .order('date_created', { ascending: false });
-  
+
       if (error) throw error;
       setRmas(data || []);
-      console.log('RMAs loaded:', data); // Καταγραφή των δεδομένων
+      console.log('RMAs loaded:', data); // Log loaded data
     } catch (error) {
       console.error('Error loading RMAs:', error);
       toast.error('Failed to load RMAs');
@@ -36,97 +37,81 @@ export function RMAList() {
       setLoading(false);
     }
   };
-  
-  
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'in-progress': return <AlertTriangle className="w-5 h-5 text-blue-500" />;
-      case 'completed': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      default: return <Clock className="w-5 h-5 text-orange-500" />;
+      case 'in-progress':
+        return <AlertTriangle className="w-5 h-5 text-blue-500" />;
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      default:
+        return <Clock className="w-5 h-5 text-orange-500" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-orange-100 text-orange-800';
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-orange-100 text-orange-800';
     }
   };
 
   const handleMarkAsComplete = async (id: string) => {
     try {
+      const rmaToUpdate = rmas.find((rma) => rma.id === id);
+      if (!rmaToUpdate) {
+        toast.error('RMA not found');
+        return;
+      }
+  
+      const newStatus = rmaToUpdate.status === 'completed' ? 'in-progress' : 'completed';
+  
       const { error } = await supabase
         .from('rmas')
-        .update({ status: 'completed' })
+        .update({ status: newStatus })
         .eq('id', id);
-
+  
       if (error) throw error;
-      
-      toast.success('RMA marked as completed');
-      loadRMAs();
+  
+      setRmas((prevRmas) =>
+        prevRmas.map((rma) =>
+          rma.id === id ? { ...rma, status: newStatus } : rma
+        )
+      );
+  
+      toast.success(`RMA status updated to ${newStatus}`);
     } catch (error) {
       console.error('Error updating RMA:', error);
       toast.error('Failed to update RMA status');
     }
   };
 
-  const deleteRMA = async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('rmas')
-        .delete()
-        .eq('id', id)
-        .select();
+  const filteredRMAs = rmas.filter((rma) => {
+    const matchesSearch =
+      rma.erp_code.toLowerCase().includes(searchTerm.toLowerCase()) || // ERP Code
+      rma.product_name.toLowerCase().includes(searchTerm.toLowerCase()) || // Product Name
+      rma.issue_description.toLowerCase().includes(searchTerm.toLowerCase()) || // Issue Description
+      rma.serial_number.toLowerCase().includes(searchTerm.toLowerCase()); // Serial Number
   
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+    const matchesFilter = filterStatus === 'all' || rma.status === filterStatus;
   
-      if (data.length === 0) {
-        toast.success('RMA deleted successfully');
-        setRmas((prevRmas) => prevRmas.filter((rma) => rma.id !== id));
-        console.log('RMA deleted:', id); // Επιβεβαίωση της διαγραφής
-      } else {
-        toast.error('Failed to delete RMA');
-        console.error('No data returned or incorrect data:', data);
-      }
-    } catch (error) {
-      console.error('Error deleting RMA:', error);
-      toast.error('Failed to delete RMA');
-    }
-  };
-  
-  
-  
-  
-  
-
-  const filteredRMAs = rmas.filter(rma => {
-    const matchesSearch = 
-      rma.rma_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rma.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rma.customer_name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter = 
-      filterStatus === 'all' || 
-      rma.status === filterStatus;
-
     return matchesSearch && matchesFilter;
   });
 
   const stats = {
     total: rmas.length,
-    inProgress: rmas.filter(rma => rma.status === 'in-progress').length,
-    completed: rmas.filter(rma => rma.status === 'completed').length
+    inProgress: rmas.filter((rma) => rma.status === 'in-progress').length,
+    completed: rmas.filter((rma) => rma.status === 'completed').length,
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="flex justify-between items-center mb-6">
@@ -201,6 +186,7 @@ export function RMAList() {
             </div>
           </div>
 
+          {/* RMA List */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             {loading ? (
               <div className="p-4">
@@ -218,55 +204,67 @@ export function RMAList() {
                       <div className="flex items-center min-w-0">
                         {getStatusIcon(rma.status)}
                         <div className="ml-4">
-                          <Link
-                            to={`/rmas/${rma.id}/edit`}
-                            className="text-lg font-medium text-gray-900 hover:text-blue-600"
-                          >
-                            {rma.rma_number}
-                          </Link>
-                          <p className="text-sm text-gray-500">
-                            {rma.product_name} - {rma.serial_number}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Customer: {rma.customer_name}
-                          </p>
-                          <div className="flex items-center mt-1">
-                            <Clock className="w-4 h-4 text-gray-400 mr-1" />
-                            <span className="text-xs text-gray-500">
-                              {format(new Date(rma.date_created), 'MMM d, yyyy')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rma.status)}`}>
-    {rma.status.charAt(0).toUpperCase() + rma.status.slice(1)}
-  </span>
-  <div className="flex space-x-2">
-    {rma.status !== 'completed' && (
-      <button
-        onClick={() => handleMarkAsComplete(rma.id)}
-        className="text-green-600 hover:text-green-800"
-      >
-        <CheckCircle className="w-5 h-5" />
-      </button>
-    )}
-    
-    <Link
-      to={`/rmas/${rma.id}/edit`}
-      className="text-gray-400 hover:text-gray-500"
-    >
-      <Edit className="w-5 h-5" />
-    </Link>
-    <span
-      onClick={() => deleteRMA(rma.id)} // Προσθήκη συμβάντος onClick για τη διαγραφή
-      className="text-red-600 hover:text-red-800 cursor-pointer"
-    >
-      Delete
+                        <Link
+  to={`/rmas/${rma.id}/edit`}
+  className="text-lg font-medium text-gray-900 hover:text-blue-600"
+>
+  {`ERP: ${rma.erp_code} Pr.Desc: ${rma.product_name}`}
+</Link>
+
+
+  <p className="text-sm text-gray-500">
+    A/A: {rma.rma_number} {/* Εμφάνιση του aukson rma numb */}
+  </p>
+  
+  <p className="text-sm text-gray-500">
+    Serial Number: {rma.serial_number} {/* Εμφάνιση του Serial Number */}
+  </p>
+  <p className="text-sm text-gray-500">
+    Issue Description: {rma.issue_description} {/* Εμφάνιση του Issue Description */}
+  </p>
+  <div className="flex items-center mt-1">
+    <Clock className="w-4 h-4 text-gray-400 mr-1" />
+    <span className="text-xs text-gray-500">
+      {format(new Date(rma.date_created), 'MMM d, yyyy')} {/* Εμφάνιση της ημερομηνίας */}
     </span>
   </div>
 </div>
-
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rma.status)}`}
+                        >
+                          {rma.status.charAt(0).toUpperCase() + rma.status.slice(1)}
+                        </span>
+                        <div className="flex space-x-2">
+  <button
+    onClick={() => handleMarkAsComplete(rma.id)}
+    className={`${
+      rma.status === 'completed' ? 'text-blue-600 hover:text-blue-800' : 'text-green-600 hover:text-green-800'
+    }`}
+  >
+    {rma.status === 'completed' ? (
+      <AlertTriangle className="w-5 h-5" /> // Icon for "in-progress"
+    ) : (
+      <CheckCircle className="w-5 h-5" /> // Icon for "completed"
+    )}
+  </button>
+  <Link
+    to={`/rmas/${rma.id}/edit`}
+    className="text-gray-400 hover:text-gray-500"
+  >
+    <Edit className="w-5 h-5" />
+  </Link>
+  <span
+    onClick={async () => await deleteRMA(rma.id)}
+    className={`text-red-600 hover:text-red-800 cursor-pointer ${
+      deletingId === rma.id ? 'opacity-50 cursor-not-allowed' : ''
+    }`}
+  >
+    {deletingId === rma.id ? 'Deleting...' : 'Delete'}
+  </span>
+</div>
+                      </div>
                     </div>
                   </li>
                 ))}
