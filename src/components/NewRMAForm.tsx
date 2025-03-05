@@ -24,9 +24,9 @@ export function NewRMAForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
-      // Disable triggers temporarily to avoid audit log issues
+      // Insert RMA data into the database
       const { data, error } = await supabase
         .from('rmas')
         .insert([
@@ -45,21 +45,26 @@ export function NewRMAForm() {
         ])
         .select()
         .single();
-
+  
       if (error) throw error;
-
+  
       // Upload files if any
       if (files.length > 0) {
         for (const file of files) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${data.id}/${Math.random()}.${fileExt}`;
+  
+          // Upload file to Supabase Storage
           const { error: uploadError } = await supabase.storage
             .from('rma-attachments')
             .upload(fileName, file);
-
-          if (uploadError) throw uploadError;
-
-          // Create attachment record
+  
+          if (uploadError) {
+            console.error('Error uploading file:', uploadError);
+            throw new Error(`Failed to upload file: ${uploadError.message}`);
+          }
+  
+          // Create attachment record in the database
           const { error: attachmentError } = await supabase
             .from('attachments')
             .insert({
@@ -69,16 +74,19 @@ export function NewRMAForm() {
               type: 'document',
               uploaded_by: (await supabase.auth.getUser()).data.user?.id,
             });
-
-          if (attachmentError) throw attachmentError;
+  
+          if (attachmentError) {
+            console.error('Error creating attachment record:', attachmentError);
+            throw new Error(`Failed to create attachment record: ${attachmentError.message}`);
+          }
         }
       }
-
+  
       toast.success('RMA created successfully');
       navigate('/rmas');
     } catch (error) {
       console.error('Error creating RMA:', error);
-      toast.error('Failed to create RMA');
+      toast.error(`Failed to create RMA: ${error.message}`);
     } finally {
       setLoading(false);
     }
