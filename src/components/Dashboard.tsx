@@ -123,7 +123,7 @@ export function Dashboard() {
             {/* Total Manuals */}
             <div
               className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:bg-gray-50"
-              onClick={() => navigate('/manuals')} // Μετάβαση στη σελίδα Manuals
+              onClick={() => navigate('/manuals')} // Μετάβαση στη σελίδα manuals
             >
               <div className="flex items-center justify-between">
                 <div>
