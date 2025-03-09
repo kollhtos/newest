@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigation } from './Navigation';
 import { Upload, Save, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // Ensure this path is correct
 import toast from 'react-hot-toast';
 
 export function NewRMAForm() {
@@ -21,7 +21,42 @@ export function NewRMAForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Function to fetch product name based on ERP code
+  const fetchProductName = async (code) => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('product_name')
+      .eq('erp_code', code)
+      .limit(1); // Limit to one result
+  
+    if (error) {
+      console.error('Error fetching product:', error);
+      return;
+    }
+  
+    if (data.length > 0) {
+      setFormData((prev) => ({ ...prev, product_name: data[0].product_name }));
+    } else {
+      console.log('No product found for the given ERP code.');
+    }
+  };
+ 
+
+  const handleErpCodeChange = (e) => {
+    const value = e.target.value;
+    setFormData({ ...formData, erp_code: value });
+
+    // Fetch product name when Enter is pressed
+    if (e.key === 'Enter') {
+      fetchProductName(value);
+    }
+  };
+
+   const testFetch = async () => {
+    const testCode = '01.001.001'; // Replace with a known ERP code
+    await fetchProductName(testCode);
+  };
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
   
@@ -72,7 +107,7 @@ export function NewRMAForm() {
               name: file.name,
               url: fileName,
               type: 'document',
-              uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+              uploaded_by: (await supabase.auth.getUser ()).data.user?.id,
             });
   
           if (attachmentError) {
@@ -92,7 +127,7 @@ export function NewRMAForm() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e) => {
     if (e.target.files) {
       setFiles(Array.from(e.target.files));
     }
@@ -127,9 +162,8 @@ export function NewRMAForm() {
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     value={formData.erp_code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, erp_code: e.target.value })
-                    }
+                    onChange={handleErpCodeChange} // Update ERP code
+                    onKeyDown={handleErpCodeChange} // Fetch product name on Enter
                   />
                 </div>
 
@@ -146,9 +180,7 @@ export function NewRMAForm() {
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     value={formData.product_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, product_name: e.target.value })
-                    }
+                    readOnly // Make this field read-only
                   />
                 </div>
 
